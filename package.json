@@ -5,7 +5,7 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/JJJ4n/node-samp-query.git"
+    "url": "https://github.com/JECKS-SAMP/lex-samp.git
   },
   "keywords": [
     "samp",
@@ -16,9 +16,9 @@
   ],
   "author": "LEXSAMP & JJJ4n",
   "bugs": {
-    "url": "https://github.com/JJJ4n/node-samp-query/issues"
+    "url": "https://github.com/JECKS-SAMP/lex-samp/issues"
   },
-  "homepage": "https://github.com/JJJ4n/node-samp-query",
+  "homepage": "https://github.com/JECKS-SAMP/lex-samp",
   "dependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
