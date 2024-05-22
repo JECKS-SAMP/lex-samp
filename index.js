@@ -1,6 +1,8 @@
-var dgram = require('dgram');
+//var dgram = require('dgram');
+var {DgramAsPromised} = require("dgram-as-promised")
 
-var query = function (options, callback) {
+var query = function (options, callback)
+{
   var self = this;
 
   if (typeof options === 'string') options.host = options;
@@ -14,7 +16,7 @@ var query = function (options, callback) {
     options.port < 1 ||
     options.port > 65535
   )
-    return callback.apply(options, ['Invalid port']);
+  return callback.apply(options, ['Invalid port']);
 
   var response = {};
 
@@ -61,7 +63,8 @@ var query = function (options, callback) {
 
 var request = function(options, opcode, callback) {
 
-    var socket = dgram.createSocket("udp4")
+   // var socket = dgram.createSocket("udp4")
+    var socket = DgramAsPromised.createSocket("udp4")
     var packet = new Buffer(10 + opcode.length)
 
     packet.write('SAMP')
