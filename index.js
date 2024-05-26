@@ -1,5 +1,5 @@
-//var dgram = require('dgram');
-var {DgramAsPromised} = require("dgram-as-promised")
+var dgram = require('dgram');
+//var {DgramAsPromised} = require("dgram-as-promised")
 
 var query = function (options, callback)
 {
@@ -63,8 +63,8 @@ var query = function (options, callback)
 
 var request = function(options, opcode, callback) {
 
-   // var socket = dgram.createSocket("udp4")
-    var socket = DgramAsPromised.createSocket("udp4")
+    var socket = dgram.createSocket("udp4")
+    //var socket = DgramAsPromised.createSocket("udp4")
     var packet = new Buffer(10 + opcode.length)
 
     packet.write('SAMP')
