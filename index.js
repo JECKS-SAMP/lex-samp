@@ -212,7 +212,7 @@ var decode = function(buffer) {
     var charset = ''
     for (var i = 0; i < 128; i++) charset += String.fromCharCode(i)
     charset += '€�‚ƒ„…†‡�‰�‹�����‘’“”•–—�™�›���� ΅Ά£¤¥¦§¨©�«¬­®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡ�ΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώ�'
-    var charsetBuffer = new Buffer(charset, 'ucs2')
+    var charsetBuffer = Buffer.from(charset, 'ucs2')
     var decodeBuffer = new Buffer(buffer.length * 2)
     for(var i = 0; i < buffer.length; i++) {
         decodeBuffer[i * 2] = charsetBuffer[buffer[i] * 2]
