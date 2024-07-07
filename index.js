@@ -1,4 +1,5 @@
 var dgram = require('dgram');
+var decode = require('iconv-lite').decode;
 //var {DgramAsPromised} = require("dgram-as-promised")
 
 var query = function (options, callback)
@@ -64,12 +65,154 @@ var query = function (options, callback)
 var request = function(options, opcode, callback) {
 
     var socket = dgram.createSocket("udp4")
-    //var socket = DgramAsPromised.createSocket("udp4")
-    var packet = new Buffer(10 + opcode.length)
+    var packet = Buffer.alloc(11);
 
     packet.write('SAMP')
 
-    for(var i = 0; i < 4; ++i) 
+    const hostParts = options.host.split('.').map(Number);
+
+    if (hostParts.length !== 4) {
+        return callback.apply(options, [new Error('Invalid host format')]);
+    }
+
+    for (var i = 0; i < 4; ++i) {
+        packet[i + 4] = hostParts[i];
+    }
+    packet[8] = options.port & 0xFF;
+    packet[9] = (options.port >> 8) & 0xFF;
+    packet[10] = opcode.charCodeAt(0);
+
+    var controller = undefined;
+
+    var onTimeOut = function() {
+        socket.close();
+        return callback.apply(options, ['Host unavailable']);
+    };
+
+    controller = setTimeout(onTimeOut, options.timeout || 2000);
+
+    socket.on('message', function(message) {
+        if (controller) clearTimeout(controller);
+
+        if (message.length < 11) return callback.apply(options, [true]);
+        else {
+            socket.close();
+
+            message = message.slice(11);
+
+            var object = {};
+            var array = [];
+            var strlen = 0;
+            var offset = 0;
+
+            try {
+                if (opcode == 'i') {               
+
+                    object.passworded = message.readUInt8(offset);
+                    offset += 1;
+
+                    object.players = message.readUInt16LE(offset);
+                    offset += 2;
+
+                    object.maxplayers = message.readUInt16LE(offset);
+                    offset += 2;
+
+                    strlen = message.readUInt16LE(offset);
+                    offset += 4;
+
+                    object.hostname = decode(message.slice(offset, offset += strlen));
+
+                    strlen = message.readUInt16LE(offset);
+                    offset += 4;
+
+                    object.gamemode = decode(message.slice(offset, offset += strlen));
+
+                    strlen = message.readUInt16LE(offset);
+                    offset += 4;
+
+                    object.mapname = decode(message.slice(offset, offset += strlen));
+
+                    return callback.apply(options, [false, object]);
+
+                }
+
+                if (opcode == 'r') {
+
+                    var rulecount = message.readUInt16LE(offset);
+                    offset += 2;
+
+                    var property, value;
+
+                    while (rulecount) {
+
+                        strlen = message.readUInt8(offset);
+                        ++offset;
+
+                        property = decode(message.slice(offset, offset += strlen));
+
+                        strlen = message.readUInt8(offset);
+                        ++offset;
+
+                        value = decode(message.slice(offset, offset += strlen));
+
+                        object[property] = value;
+
+                        --rulecount;
+                    }
+
+                    return callback.apply(options, [false, object]);
+                }
+
+                if (opcode == 'd') {
+
+                    var playercount = message.readUInt16LE(offset);
+                    offset += 2;
+
+                    var player;
+
+                    while (playercount) {
+
+                        player = {};
+
+                        player.id = message.readUInt8(offset);
+                        ++offset;
+
+                        strlen = message.readUInt8(offset);
+                        ++offset;
+
+                        player.name = decode(message.slice(offset, offset += strlen));
+
+                        player.score = message.readUInt16LE(offset);
+                        offset += 4;
+
+                        player.ping = message.readUInt16LE(offset);
+                        offset += 4;
+
+                        array.push(player);
+
+                        --playercount;
+                    }
+
+                    return callback.apply(options, [false, array]);
+                }
+
+            } catch (exception) {
+                return callback.apply(options, [exception]);
+            }
+        }
+    });
+
+    socket.on('error', function(err) {
+        clearTimeout(controller);
+        socket.close();
+        return callback.apply(options, [err]);
+    });
+};
+
+    //var socket = DgramAsPromised.createSocket("udp4")
+    //var packet = new Buffer(10 + opcode.length)
+
+    /*for(var i = 0; i < 4; ++i) 
     packet[i + 4] = options.host.split('.')[i]
 
     packet[8] = options.port & 0xFF
@@ -206,7 +349,7 @@ var request = function(options, opcode, callback) {
             }
         }
     })
-}
+}*/
 
 var decode = function(buffer) {
     var charset = ''
