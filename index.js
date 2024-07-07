@@ -2,8 +2,8 @@ const dgram = require('dgram');
 const decode = require('iconv-lite').decode;
 const { createLogger, transports, format } = require('winston');
 const fs = require('fs');
-
-const logDirectory = '../../';
+const path = require('path');
+const logDirectory = path.join(__dirname, '../../logs');
 fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
 
 const logger = createLogger({
@@ -13,7 +13,7 @@ const logger = createLogger({
         format.json()
     ),
     transports: [
-        new transports.File({ filename: `${logDirectory}/lex-query.log` })
+        new transports.File({ filename: path.join(logDirectory, 'lex-query.log') })
     ]
 });
 
