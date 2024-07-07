@@ -1,13 +1,28 @@
 const dgram = require('dgram');
 const decode = require('iconv-lite').decode;
+const { createLogger, transports, format } = require('winston');
+const fs = require('fs');
+
+const logDirectory = '../../';
+fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
+
+const logger = createLogger({
+    level: 'info',
+    format: format.combine(
+        format.timestamp(),
+        format.json()
+    ),
+    transports: [
+        new transports.File({ filename: `${logDirectory}/lex-query.log` })
+    ]
+});
 
 const query = function (options, callback) {
     var self = this;
 
     if (typeof options === 'string') options.host = options;
     options.port = options.port || 7777;
-    options.timeout = options.timeout || 5000; // Tingkatkan timeout menjadi 5000ms
-
+    options.timeout = options.timeout || 2000;
     if (!options.host) return callback.apply(options, ['Invalid host']);
 
     if (
@@ -21,7 +36,10 @@ const query = function (options, callback) {
     var startTime = new Date().getTime();
 
     request.call(self, options, 'i', function (error, information) {
-        if (error) return callback.apply(options, [error]);
+        if (error) {
+            logger.error(`Error querying SA:MP server: ${error}`);
+            return callback.apply(options, [error]);
+        }
 
         response.address = options.host;
         response.hostname = information.hostname;
@@ -32,7 +50,10 @@ const query = function (options, callback) {
         response.online = information.players;
 
         request.call(self, options, 'r', function (error, rules) {
-            if (error) return callback.apply(options, [error]);
+            if (error) {
+                logger.error(`Error querying SA:MP server rules: ${error}`);
+                return callback.apply(options, [error]);
+            }
 
             rules.lagcomp = rules.lagcomp === 'On';
             rules.weather = parseInt(rules.weather, 10);
@@ -43,14 +64,19 @@ const query = function (options, callback) {
                 response.players = [];
                 var endTime = new Date().getTime();
                 response.ping = endTime - startTime;
+                logger.info(`SA:MP server query completed in ${response.ping} ms`);
                 return callback.apply(options, [false, response]);
             } else {
                 request.call(self, options, 'd', function (error, players) {
-                    if (error) return callback.apply(options, [error]);
+                    if (error) {
+                        logger.error(`Error querying SA:MP server players: ${error}`);
+                        return callback.apply(options, [error]);
+                    }
 
                     response.players = players;
                     var endTime = new Date().getTime();
                     response.ping = endTime - startTime;
+                    logger.info(`SA:MP server query completed in ${response.ping} ms`);
                     return callback.apply(options, [false, response]);
                 });
             }
@@ -66,6 +92,7 @@ const request = function (options, opcode, callback) {
 
     const hostParts = options.host.split('.').map(Number);
     if (hostParts.length !== 4) {
+        logger.error('Invalid host format');
         return callback.apply(options, [new Error('Invalid host format')]);
     }
 
@@ -76,24 +103,24 @@ const request = function (options, opcode, callback) {
     packet[9] = (options.port >> 8) & 0xFF;
     packet[10] = opcode.charCodeAt(0);
 
-    console.log(`Sending packet to ${options.host}:${options.port} with opcode ${opcode}`);
+    logger.info(`Sending packet to ${options.host}:${options.port} with opcode ${opcode}`);
 
     try {
         socket.send(packet, 0, packet.length, options.port, options.host, function (error, bytes) {
             if (error) {
-                console.log(`Error sending packet: ${error}`);
+                logger.error(`Error sending packet: ${error}`);
                 return callback(error);
             }
-            console.log(`Packet sent, ${bytes} bytes`);
+            logger.info(`Packet sent, ${bytes} bytes`);
         });
     } catch (error) {
-        console.log(`Exception during socket send: ${error}`);
+        logger.error(`Exception during socket send: ${error}`);
         return callback(error);
     }
 
     var controller = setTimeout(function () {
         socket.close();
-        console.log('Request timed out');
+        logger.warn('Request timed out');
         return callback('Host unavailable');
     }, options.timeout);
 
@@ -167,7 +194,7 @@ const request = function (options, opcode, callback) {
                 return callback.apply(options, [false, array]);
             }
         } catch (exception) {
-            console.log('Exception during parsing:', exception);
+            logger.error(`Exception during parsing: ${exception}`);
             return callback.apply(options, [exception]);
         }
     });
@@ -175,7 +202,7 @@ const request = function (options, opcode, callback) {
     socket.on('error', function (err) {
         clearTimeout(controller);
         socket.close();
-        console.log(`Socket error: ${err}`);
+        logger.error(`Socket error: ${err}`);
         return callback.apply(options, [err]);
     });
 };
