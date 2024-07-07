@@ -1,6 +1,6 @@
 {
   "name": "lex-samp",
-  "version": "2",
+  "version": "3",
   "description": "Query API for SAMP",
   "main": "index.js",
   "repository": {
